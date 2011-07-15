@@ -23,7 +23,7 @@ Next you'll need to load oa-casport into your Rails application as a Rack middle
     Rails.application.config.middleware.use OmniAuth::Builder do
       provider :casport, {
         :setup       => true,
-        :cas_server  => 'http://cas.slkdemos.com',
+        :cas_server  => 'http://cas.slkdemos.com/users/',
         :ssl_ca_file => '/path/to/your/server/Apache_bundle_file.crt',
         :pem_cert    => '/path/to/your/server/pem_certificate_file.pem'
       }
@@ -56,7 +56,7 @@ Next we need to create the sessions controller to handle user authentication via
     
       def setup
         # replace request.env['SSL_CLIENT_S_DN'] with your web server's user DN string from SSL
-        request.env['omniauth.strategy'].options[:dn] = request.env['SSL_CLIENT_S_DN']
+        request.env['omniauth.strategy'].options[:uid] = request.env['SSL_CLIENT_S_DN']
         render :text => 'Setup complete', :status => 404
       end
       

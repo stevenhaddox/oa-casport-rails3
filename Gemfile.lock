@@ -1,7 +1,7 @@
 PATH
   remote: ../oa-casport
   specs:
-    oa-casport (0.2.6)
+    oa-casport (0.1.0)
       httparty
       oa-core
       redis
@@ -143,6 +143,7 @@ DEPENDENCIES
   database_cleaner
   flash-message-conductor
   high_voltage
+  nokogiri (~> 1.5.0)
   oa-casport!
   rails (= 3.0.9)
   redcarpet

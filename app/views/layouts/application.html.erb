@@ -12,7 +12,7 @@
     <nav>
       <ul>
         <% unless @current_user %>
-          <li><a href='/auth/casport'>Sign In via CAS</a></li>
+          <li><a href='/auth/casport'>Sign In via CASPORT</a></li>
         <% else %>
           <li>Welcome, <%= @current_user.first_name %>! <%= link_to 'Sign Out', signout_path %></li>
         <% end %>

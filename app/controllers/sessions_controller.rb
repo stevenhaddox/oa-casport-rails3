@@ -2,8 +2,8 @@ class SessionsController < ApplicationController
   
   def setup
     #prod would be:
-    #request.env['omniauth.strategy'].options[:dn] = request.env['SSL_CLIENT_S_DN']
-    request.env['omniauth.strategy'].options[:dn] = '1'
+    #request.env['omniauth.strategy'].options[:uid] = request.env['SSL_CLIENT_S_DN']
+    request.env['omniauth.strategy'].options[:uid] = '1'
     render :text => 'Setup compelte', :status => 404
   end
   

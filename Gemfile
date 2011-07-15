@@ -5,6 +5,7 @@ gem 'sqlite3'
 
 gem 'high_voltage'
 gem 'flash-message-conductor'
+gem 'nokogiri', "~> 1.5.0"
 gem 'oa-casport', :path => '../oa-casport'
 gem 'redcarpet'
 
