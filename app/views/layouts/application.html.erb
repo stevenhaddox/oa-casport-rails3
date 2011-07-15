@@ -1,13 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>OaCasportRails3</title>
+  <title>oa-casport Sample Rails 3 App</title>
   <%= stylesheet_link_tag :all %>
   <%= javascript_include_tag :defaults %>
   <%= csrf_meta_tag %>
 </head>
 <body>
+  <div class='container'>
+    <h1>Welcome to an oa-casport Rails 3 Powered App!</h1>
+    <nav>
+      <ul>
+        <% unless @current_user %>
+          <li><a href='/auth/casport'>Sign In via CAS</a></li>
+        <% else %>
+          <li>Welcome, <%= @current_user.first_name %>! <%= link_to 'Sign Out', signout_path %></li>
+        <% end %>
+      </ul>
+    </nav>
 
+  <%= render_flash_messages %>
   <%= yield %>
 
 </body>

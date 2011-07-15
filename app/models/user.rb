@@ -2,7 +2,7 @@ class User < ActiveRecord::Base
   attr_protected :id, :uid, :provider
 
   private
-  def create_with_omniauth(auth_hash)
+  def self.create_with_omniauth(auth_hash)
     create! do |user|
       user.provider   = auth_hash['provider']
       user.uid        = auth_hash['uid']

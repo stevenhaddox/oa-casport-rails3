@@ -1,8 +1,122 @@
-<h2>Sample Rails 3 Application Utilizing oa-casport</h2>
+<%= m(
+<<-MARKDOWN
 
-<% if current_user %>
-  <%= link_to 'Sign Out', '/signout' %>
-  <%= debug current_user %>
-<% else %>
-  <%= link_to 'Sign In', '/auth/casport' %>
-<% end %>
+## So you want to authenticate with CASPORT in a Rails 3 app eh?
+
+This simple site will show you how **easy** it is to use the `oa-casport` gem for CASPORT authentication.
+
+### Install the oa-casport Gem
+
+First start by adding the following gem to your Gemfile:
+
+    gem 'oa-casport'
+
+Then update your gems with Bundler:
+
+    $ bundle
+
+### Configure oa-casport and Initialize
+
+Next you'll need to load oa-casport into your Rails application as a Rack middleware application via an initializer.
+
+    #config/initializers/omniauth.rb
+    Rails.application.config.middleware.use OmniAuth::Builder do
+      provider :casport, {
+        :setup       => true,
+        :cas_server  => 'http://cas.slkdemos.com',
+        :ssl_ca_file => '/path/to/your/server/Apache_bundle_file.crt',
+        :pem_cert    => '/path/to/your/server/pem_certificate_file.pem'
+      }
+    end
+
+### Setup the OmniAuth Infrastructure
+
+In order to use custom OmniAuth strategies (like oa-casport) you'll need to create a User model with at least two attributes `provider` and `uid`.  You can add in any extra fields that the CASPORT server returns for users which you might want to store in your database as well.  Here's an example using the Rails model generator along with all fields provided by the sample CASPORT server:
+
+    $ rails g model user provider:string uid:string email:string first_name:string last_name:string phone:string cell:string address:string address2:string city:string state:string country:string
+    $ rake db:migrate
+
+After you've created your user model you'll need to create a sessions controller for OmniAuth routes:
+
+    $ rails g controller sessions
+
+Lastly, we need to map some routes for OmniAuth:
+
+    #config/routes.rb
+    match '/auth/:provider/setup', :to => 'sessions#setup'
+    match '/auth/:provider/callback', :to => 'sessions#create'
+    match '/signout' => 'sessions#destroy', :as => :signout
+
+### Configure Sessions for oa-casport
+
+Next we need to create the sessions controller to handle user authentication via CASPORT.
+
+    #app/controllers/sessions_controller.rb
+    class SessionsController < ApplicationController
+    
+      def setup
+        # replace request.env['SSL_CLIENT_S_DN'] with your web server's user DN string from SSL
+        request.env['omniauth.strategy'].options[:dn] = request.env['SSL_CLIENT_S_DN']
+        render :text => 'Setup complete', :status => 404
+      end
+      
+      def create
+        auth_hash = request.env['omniauth.auth']
+        user = User.find_by_provider_and_uid(auth_hash['provider'], auth_hash['uid']) || User.create_with_omniauth(auth_hash)
+        session[:user_id] = user.id
+        redirect_to root_url, :notice => 'Thanks for logging in with CASPORT'
+      end
+      
+      def destroy
+        session[:user_id] = nil
+        redirect_to root_url, :notice => 'You have signed out'
+      end
+    
+    end
+
+### Creating the User Model
+
+Since we've received data back from CASPORT now it's time to store that data to our database. Add the following to the user model:
+
+    #app/models/user.rb
+    class User < ActiveRecord::Base
+      attr_protected :id, :uid, :provider
+
+      private
+      def self.create_with_omniauth(auth_hash)
+        create! do |user|
+          user.provider   = auth_hash['provider']
+          user.uid        = auth_hash['uid']
+          user.email      = auth_hash['user_info']['email']
+          user.first_name = auth_hash['extra']['user_hash']['first_name']
+          user.last_name  = auth_hash['extra']['user_hash']['last_name']
+          user.phone      = auth_hash['extra']['user_hash']['phone']
+          user.cell       = auth_hash['extra']['user_hash']['cell']
+          user.address    = auth_hash['extra']['user_hash']['address']
+          user.address2   = auth_hash['extra']['user_hash']['address2']
+          user.city       = auth_hash['extra']['user_hash']['city']
+          user.state      = auth_hash['extra']['user_hash']['state']
+          user.country    = auth_hash['extra']['user_hash']['country']
+        end
+      end
+
+    end
+
+### Configure User Login
+
+Now that you have the ability to get a user's details from CASPORT and have saved them to your database, let's setup a current_user like most Rails applications:
+
+    #app/controllers/application_controller.rb
+    before_filter :current_user
+    helper_method :current_user
+    
+    private
+    def current_user
+      @current_user ||= User.find(session[:user_id]) if session[:user_id]
+      #To force automatic login uncomment the following line:
+      redirect_to '/auth/casport' unless @current_user or (params[:controller] == 'sessions' && params[:provider] == 'casport')
+    end
+
+
+MARKDOWN
+)%>

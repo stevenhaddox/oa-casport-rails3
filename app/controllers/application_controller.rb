@@ -6,8 +6,9 @@ class ApplicationController < ActionController::Base
   
   private
   def current_user
-    session[:user_id] = nil if session[:expiry_time] && (Time.parse(session[:expiry_time]) < Time.now)
+    session[:user_id] = nil if session[:expires_at] && (session[:expires_at] < Time.now)
     @current_user ||= User.find(session[:user_id]) if session[:user_id]
+    #Force automatic login by uncommenting the following line:
     #redirect_to '/auth/casport' unless @current_user or (params[:controller] == 'sessions' && params[:provider] == 'casport')
   end
 end
