@@ -1,0 +1,8 @@
+<h2>Sample Rails 3 Application Utilizing oa-casport</h2>
+
+<% if current_user %>
+  <%= link_to 'Sign Out', '/signout' %>
+  <%= debug current_user %>
+<% else %>
+  <%= link_to 'Sign In', '/auth/casport' %>
+<% end %>
