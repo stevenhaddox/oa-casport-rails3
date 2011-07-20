@@ -9,7 +9,6 @@ class SessionsController < ApplicationController
   
   def create
     auth_hash = request.env['omniauth.auth']
-    raise auth_hash.to_yaml
     user = User.find_by_provider_and_uid(auth_hash['provider'], auth_hash['uid']) || User.create_with_omniauth(auth_hash)
     session[:user_id] = user.id
     session[:expires_at] = 24.hours.from_now

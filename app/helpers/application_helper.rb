@@ -14,7 +14,7 @@ module ApplicationHelper
     doc.to_s
   end
     
-  def flash_messages(div_id='flash_messages', div_clas='')
+  def flash_messages(div_id='flash_messages', div_class='')
     div_content = ''
     PlanetArgon::FlashMessageConductor::FLASH_MESSAGE_TYPES.each do |key|
       div_content << render_flash_message(key.to_s, flash[key]) unless flash[key].blank?
