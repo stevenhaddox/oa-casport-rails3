@@ -11,15 +11,18 @@
     <h1>Welcome to an oa-casport Rails 3 Powered App!</h1>
     <nav>
       <ul>
-        <% unless @current_user %>
+        <% unless current_user %>
           <li><a href='/auth/casport'>Sign In via CASPORT</a></li>
         <% else %>
-          <li>Welcome, <%= @current_user.first_name %>! <%= link_to 'Sign Out', signout_path %></li>
+          <li>Welcome, <%= current_user.first_name %>! <%= link_to 'Sign Out', signout_path %></li>
         <% end %>
       </ul>
     </nav>
 
   <%= flash_messages %>
+  <% if current_user %>
+    <pre><code><%= current_user.to_yaml %></code></pre>
+  <% end %>
   <%= yield %>
 
 </body>

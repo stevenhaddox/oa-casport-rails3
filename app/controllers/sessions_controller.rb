@@ -1,7 +1,7 @@
 class SessionsController < ApplicationController
   
   def setup
-    #prod would be:
+    # In an SSL enabled Apache server w/ Passenger you'd do something like this to assign the DN:
     #request.env['omniauth.strategy'].options[:uid] = request.env['SSL_CLIENT_S_DN']
     request.env['omniauth.strategy'].options[:uid] = 1
     render :text => 'Setup compelte', :status => 404
@@ -9,10 +9,16 @@ class SessionsController < ApplicationController
   
   def create
     auth_hash = request.env['omniauth.auth']
-    user = User.find_by_provider_and_uid(auth_hash['provider'], auth_hash['uid']) || User.create_with_omniauth(auth_hash)
-    session[:user_id] = user.id
-    session[:expires_at] = 24.hours.from_now
-    redirect_to root_url, :notice => 'Thanks for logging in via CAS!'
+    unless auth_hash.blank?
+      user = User.find_by_provider_and_uid(auth_hash['provider'], auth_hash['uid']) || User.create_with_omniauth(auth_hash)
+      session[:user_id] = user.id
+      session[:expires_at] = 24.hours.from_now
+      add_message('Thanks for logging in via CASPORT')
+    else
+      add_error('Your credentials could not be validated via CASPORT')
+      Rails.logger.error("Error authentication DN: #{request.env['SSL_CLIENT_S_DN']}")
+    end
+    redirect_to root_url
   end
   
   def destroy
@@ -21,6 +27,6 @@ class SessionsController < ApplicationController
   end
   
   def failure
-    raise params.to_yaml
+    redirect_to root_url, :alert => "Authentication error: #{params[:message].humanize}"
   end
 end

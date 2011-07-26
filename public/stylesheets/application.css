@@ -1,0 +1,56 @@
+/* Application styles */
+
+.container { width: 960px; margin: 0 auto; }
+
+h1, h2 { text-align: center; }
+
+nav ul {
+  background-color: #000;
+  color: #DDD;
+  width: 430px;
+  margin: 0 auto;
+  border: 3px solid #999;
+  list-style: none outside none;
+  padding: 5px 10px;
+  text-align: center;
+}
+
+nav ul li a:link, nav ul li a:visited, nav ul li a:hover { color: #FFF; text-decoration: none; }
+nav ul li a:hover { text-decoration: underline; }
+
+#flash_messages { width: 500px; margin: 0 auto; }
+#flash_messages .error, .notice, .message { padding: .8em; margin-bottom: 1em; border: 2px solid #ddd; }
+#flash_messages .error { background: #FBE3E4; color: #8A1F11; border-color: #FBC2C4; }
+#flash_messages .notice { background: #FFF6BF; color: #514721; border-color: #FFD324; }
+#flash_messages .message { background: #E6EFC2; color: #264409; border-color: #C6D880; }
+#flash_messages .error a { color: #8A1F11; }
+#flash_messages .notice a { color: #514721; }
+#flash_messages .message a { color: #264409; }
+
+pre {
+  margin: .5em 30px;
+  border: 1px dashed;
+  padding: 10px;
+  width: 800px;
+  background-color: #CCC;
+  overflow: auto;
+}
+
+pre code { }
+
+p code {
+  border-bottom: 1px solid #CCC;
+}
+
+/* Prettify styles */
+.str { color: #181; }
+.kwd { color: #369; }
+.com { color: #666; }
+.typ { color: #C40; }
+.lit { color: #900; }
+.pun { color: #000; font-weight: bold; }
+.pln { color: #333; }
+.tag { color: #369; font-weight: bold; }
+.atn { color: #939; font-weight: bold; }
+.atv { color: #181; }
+.dec { color: #606; }
