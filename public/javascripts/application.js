@@ -1,2 +1,15 @@
-// Place your application-specific JavaScript functions and classes here
-// This file is automatically included by javascript_include_tag :defaults
+$(document).ready(function() {
+
+    // add prettyprint class to all <pre><code></code></pre> blocks
+    var prettify = false;
+    $("pre code").parent().each(function() {
+        $(this).addClass('prettyprint');
+        prettify = true;
+    });
+
+    // if code blocks were found, bring in the prettifier ...
+    if ( prettify ) {
+        $.getScript("/javascripts/prettify.js", function() { prettyPrint() });
+    }
+
+});

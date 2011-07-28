@@ -1,7 +1,7 @@
 PATH
   remote: ../oa-casport
   specs:
-    oa-casport (0.1.3)
+    oa-casport (0.1.4)
       httparty
       oa-core
       redis
