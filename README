@@ -1,256 +1,115 @@
-== Welcome to Rails
+## So you want to authenticate with CASPORT in a Rails 3 app eh?
 
-Rails is a web-application framework that includes everything needed to create
-database-backed web applications according to the Model-View-Control pattern.
+This simple site will show you how **easy** it is to use the `oa-casport` gem for CASPORT authentication.
 
-This pattern splits the view (also called the presentation) into "dumb"
-templates that are primarily responsible for inserting pre-built data in between
-HTML tags. The model contains the "smart" domain objects (such as Account,
-Product, Person, Post) that holds all the business logic and knows how to
-persist themselves to a database. The controller handles the incoming requests
-(such as Save New Account, Update Product, Show Post) by manipulating the model
-and directing data to the view.
+### Install the oa-casport Gem
 
-In Rails, the model is handled by what's called an object-relational mapping
-layer entitled Active Record. This layer allows you to present the data from
-database rows as objects and embellish these data objects with business logic
-methods. You can read more about Active Record in
-link:files/vendor/rails/activerecord/README.html.
+First start by adding the following gem to your Gemfile:
 
-The controller and view are handled by the Action Pack, which handles both
-layers by its two parts: Action View and Action Controller. These two layers
-are bundled in a single package due to their heavy interdependence. This is
-unlike the relationship between the Active Record and Action Pack that is much
-more separate. Each of these packages can be used independently outside of
-Rails. You can read more about Action Pack in
-link:files/vendor/rails/actionpack/README.html.
+    gem 'oa-casport'
 
+Then update your gems with Bundler:
 
-== Getting Started
+    $ bundle
 
-1. At the command prompt, create a new Rails application:
-       <tt>rails new myapp</tt> (where <tt>myapp</tt> is the application name)
+### Configure oa-casport and Initialize
 
-2. Change directory to <tt>myapp</tt> and start the web server:
-       <tt>cd myapp; rails server</tt> (run with --help for options)
+Next you'll need to load oa-casport into your Rails application as a Rack middleware application via an initializer.
 
-3. Go to http://localhost:3000/ and you'll see:
-       "Welcome aboard: You're riding Ruby on Rails!"
-
-4. Follow the guidelines to start developing your application. You can find
-the following resources handy:
-
-* The Getting Started Guide: http://guides.rubyonrails.org/getting_started.html
-* Ruby on Rails Tutorial Book: http://www.railstutorial.org/
-
-
-== Debugging Rails
-
-Sometimes your application goes wrong. Fortunately there are a lot of tools that
-will help you debug it and get it back on the rails.
-
-First area to check is the application log files. Have "tail -f" commands
-running on the server.log and development.log. Rails will automatically display
-debugging and runtime information to these files. Debugging info will also be
-shown in the browser on requests from 127.0.0.1.
-
-You can also log your own messages directly into the log file from your code
-using the Ruby logger class from inside your controllers. Example:
-
-  class WeblogController < ActionController::Base
-    def destroy
-      @weblog = Weblog.find(params[:id])
-      @weblog.destroy
-      logger.info("#{Time.now} Destroyed Weblog ID ##{@weblog.id}!")
+    #config/initializers/omniauth.rb
+    Rails.application.config.middleware.use OmniAuth::Builder do
+      provider :casport, {
+        :setup       => true,
+        :cas_server  => 'http://cas.slkdemos.com/users/',
+        :ssl_ca_file => '/path/to/your/server/Apache_bundle_file.crt',
+        :pem_cert    => '/path/to/your/server/pem_certificate_file.pem'
+      }
     end
-  end
 
-The result will be a message in your log file along the lines of:
+### Setup the OmniAuth Infrastructure
 
-  Mon Oct 08 14:22:29 +1000 2007 Destroyed Weblog ID #1!
+In order to use custom OmniAuth strategies (like oa-casport) you'll need to create a User model with at least two attributes `provider` and `uid`.  You can add in any extra fields that the CASPORT server returns for users which you might want to store in your database as well.  Here's an example using the Rails model generator along with all fields provided by the sample CASPORT server:
 
-More information on how to use the logger is at http://www.ruby-doc.org/core/
+    $ rails g model user provider:string uid:string email:string first_name:string last_name:string phone:string cell:string address:string address2:string city:string state:string country:string
+    $ rake db:migrate
 
-Also, Ruby documentation can be found at http://www.ruby-lang.org/. There are
-several books available online as well:
+After you've created your user model you'll need to create a sessions controller for OmniAuth routes:
 
-* Programming Ruby: http://www.ruby-doc.org/docs/ProgrammingRuby/ (Pickaxe)
-* Learn to Program: http://pine.fm/LearnToProgram/ (a beginners guide)
+    $ rails g controller sessions
 
-These two books will bring you up to speed on the Ruby language and also on
-programming in general.
+Lastly, we need to map some routes for OmniAuth:
 
+    #config/routes.rb
+    match '/auth/:provider/setup', :to => 'sessions#setup'
+    match '/auth/:provider/callback', :to => 'sessions#create'
+    match '/signout' => 'sessions#destroy', :as => :signout
 
-== Debugger
+### Configure Sessions for oa-casport
 
-Debugger support is available through the debugger command when you start your
-Mongrel or WEBrick server with --debugger. This means that you can break out of
-execution at any point in the code, investigate and change the model, and then,
-resume execution! You need to install ruby-debug to run the server in debugging
-mode. With gems, use <tt>sudo gem install ruby-debug</tt>. Example:
+Next we need to create the sessions controller to handle user authentication via CASPORT.
 
-  class WeblogController < ActionController::Base
-    def index
-      @posts = Post.find(:all)
-      debugger
+    #app/controllers/sessions_controller.rb
+    class SessionsController < ApplicationController
+    
+      def setup
+        # replace request.env['SSL_CLIENT_S_DN'] with your web server's user DN string from SSL
+        request.env['omniauth.strategy'].options[:uid] = request.env['SSL_CLIENT_S_DN']
+        render :text => 'Setup complete', :status => 404
+      end
+      
+      def create
+        auth_hash = request.env['omniauth.auth']
+        user = User.find_by_provider_and_uid(auth_hash['provider'], auth_hash['uid']) || User.create_with_omniauth(auth_hash)
+        session[:user_id] = user.id
+        redirect_to root_url, :notice => 'Thanks for logging in with CASPORT'
+      end
+      
+      def destroy
+        session[:user_id] = nil
+        redirect_to root_url, :notice => 'You have signed out'
+      end
+    
     end
-  end
 
-So the controller will accept the action, run the first line, then present you
-with a IRB prompt in the server window. Here you can do things like:
+### Creating the User Model
 
-  >> @posts.inspect
-  => "[#<Post:0x14a6be8
-          @attributes={"title"=>nil, "body"=>nil, "id"=>"1"}>,
-       #<Post:0x14a6620
-          @attributes={"title"=>"Rails", "body"=>"Only ten..", "id"=>"2"}>]"
-  >> @posts.first.title = "hello from a debugger"
-  => "hello from a debugger"
+Since we've received data back from CASPORT now it's time to store that data to our database. Add the following to the user model:
 
-...and even better, you can examine how your runtime objects actually work:
+    #app/models/user.rb
+    class User < ActiveRecord::Base
+      attr_protected :id, :uid, :provider
 
-  >> f = @posts.first
-  => #<Post:0x13630c4 @attributes={"title"=>nil, "body"=>nil, "id"=>"1"}>
-  >> f.
-  Display all 152 possibilities? (y or n)
+      private
+      def self.create_with_omniauth(auth_hash)
+        create! do |user|
+          user.provider   = auth_hash['provider']
+          user.uid        = auth_hash['uid']
+          user.email      = auth_hash['user_info']['email']
+          user.first_name = auth_hash['extra']['user_hash']['first_name']
+          user.last_name  = auth_hash['extra']['user_hash']['last_name']
+          user.phone      = auth_hash['extra']['user_hash']['phone']
+          user.cell       = auth_hash['extra']['user_hash']['cell']
+          user.address    = auth_hash['extra']['user_hash']['address']
+          user.address2   = auth_hash['extra']['user_hash']['address2']
+          user.city       = auth_hash['extra']['user_hash']['city']
+          user.state      = auth_hash['extra']['user_hash']['state']
+          user.country    = auth_hash['extra']['user_hash']['country']
+        end
+      end
 
-Finally, when you're ready to resume execution, you can enter "cont".
+    end
 
+### Configure User Login
 
-== Console
+Now that you have the ability to get a user's details from CASPORT and have saved them to your database, let's setup a current_user like most Rails applications:
 
-The console is a Ruby shell, which allows you to interact with your
-application's domain model. Here you'll have all parts of the application
-configured, just like it is when the application is running. You can inspect
-domain models, change values, and save to the database. Starting the script
-without arguments will launch it in the development environment.
-
-To start the console, run <tt>rails console</tt> from the application
-directory.
-
-Options:
-
-* Passing the <tt>-s, --sandbox</tt> argument will rollback any modifications
-  made to the database.
-* Passing an environment name as an argument will load the corresponding
-  environment. Example: <tt>rails console production</tt>.
-
-To reload your controllers and models after launching the console run
-<tt>reload!</tt>
-
-More information about irb can be found at:
-link:http://www.rubycentral.com/pickaxe/irb.html
-
-
-== dbconsole
-
-You can go to the command line of your database directly through <tt>rails
-dbconsole</tt>. You would be connected to the database with the credentials
-defined in database.yml. Starting the script without arguments will connect you
-to the development database. Passing an argument will connect you to a different
-database, like <tt>rails dbconsole production</tt>. Currently works for MySQL,
-PostgreSQL and SQLite 3.
-
-== Description of Contents
-
-The default directory structure of a generated Ruby on Rails application:
-
-  |-- app
-  |   |-- controllers
-  |   |-- helpers
-  |   |-- mailers
-  |   |-- models
-  |   `-- views
-  |       `-- layouts
-  |-- config
-  |   |-- environments
-  |   |-- initializers
-  |   `-- locales
-  |-- db
-  |-- doc
-  |-- lib
-  |   `-- tasks
-  |-- log
-  |-- public
-  |   |-- images
-  |   |-- javascripts
-  |   `-- stylesheets
-  |-- script
-  |-- test
-  |   |-- fixtures
-  |   |-- functional
-  |   |-- integration
-  |   |-- performance
-  |   `-- unit
-  |-- tmp
-  |   |-- cache
-  |   |-- pids
-  |   |-- sessions
-  |   `-- sockets
-  `-- vendor
-      `-- plugins
-
-app
-  Holds all the code that's specific to this particular application.
-
-app/controllers
-  Holds controllers that should be named like weblogs_controller.rb for
-  automated URL mapping. All controllers should descend from
-  ApplicationController which itself descends from ActionController::Base.
-
-app/models
-  Holds models that should be named like post.rb. Models descend from
-  ActiveRecord::Base by default.
-
-app/views
-  Holds the template files for the view that should be named like
-  weblogs/index.html.erb for the WeblogsController#index action. All views use
-  eRuby syntax by default.
-
-app/views/layouts
-  Holds the template files for layouts to be used with views. This models the
-  common header/footer method of wrapping views. In your views, define a layout
-  using the <tt>layout :default</tt> and create a file named default.html.erb.
-  Inside default.html.erb, call <% yield %> to render the view using this
-  layout.
-
-app/helpers
-  Holds view helpers that should be named like weblogs_helper.rb. These are
-  generated for you automatically when using generators for controllers.
-  Helpers can be used to wrap functionality for your views into methods.
-
-config
-  Configuration files for the Rails environment, the routing map, the database,
-  and other dependencies.
-
-db
-  Contains the database schema in schema.rb. db/migrate contains all the
-  sequence of Migrations for your schema.
-
-doc
-  This directory is where your application documentation will be stored when
-  generated using <tt>rake doc:app</tt>
-
-lib
-  Application specific libraries. Basically, any kind of custom code that
-  doesn't belong under controllers, models, or helpers. This directory is in
-  the load path.
-
-public
-  The directory available for the web server. Contains subdirectories for
-  images, stylesheets, and javascripts. Also contains the dispatchers and the
-  default HTML files. This should be set as the DOCUMENT_ROOT of your web
-  server.
-
-script
-  Helper scripts for automation and generation.
-
-test
-  Unit and functional tests along with fixtures. When using the rails generate
-  command, template test files will be generated for you and placed in this
-  directory.
-
-vendor
-  External libraries that the application depends on. Also includes the plugins
-  subdirectory. If the app has frozen rails, those gems also go here, under
-  vendor/rails/. This directory is in the load path.
+    #app/controllers/application_controller.rb
+    before_filter :current_user
+    helper_method :current_user
+    
+    private
+    def current_user
+      @current_user ||= User.find(session[:user_id]) if session[:user_id]
+      #To force automatic login uncomment the following line:
+      redirect_to '/auth/casport' unless @current_user or (params[:controller] == 'sessions' && params[:provider] == 'casport')
+    end
